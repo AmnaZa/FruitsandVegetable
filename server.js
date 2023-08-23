@@ -1,90 +1,118 @@
-const express = require('express')
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
 const app = express();
-
-const fruits = require('./models/fruits.js')
-const vegetables = require('./models/vegetable');
-
+const Fruit = require('./models/fruit.js');
+const Vegetable = require('./models/vegetables.js');
 
 app.set('view engine', 'jsx');
 app.engine('jsx', require('express-react-views').createEngine());
 
+app.use(express.urlencoded({ extended: false }));
 
-app.use(express.urlencoded({extended:false}));
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
-//////INDEX
-app.get('/',  (req, res) => {
-    res.send('<h1>Hello WISE!</h1>')
-})
+mongoose.connection.once('open', () => {
+  console.log('connected to mongo');
+});
 
-//////FRUIT INDEX
+app.get('/', (req, res) => {
+  res.send('<h1>Hello WISE!</h1>');
+});
+
+// Fruit routes
 app.get('/fruits', (req, res) => {
-    res.render('Index', {
-        fruits: fruits
+  Fruit.find({})
+    .then(allFruits => {
+      res.render('fruits/Index', { fruits: allFruits });
+    })
+    .catch(error => {
+      console.error(error);
     });
 });
 
-///////NEW
-//Page with form to create a new fruit
 app.get('/fruits/new', (req, res) => {
-    res.render('New');
+  res.render('fruits/New');
 });
 
-//////SHOW
-app.get('/fruits/:indexOfFruitsArray', (req, res) => {
-    // res.send(fruits[req.params.indexOfFruitsArray]);
-    res.render('Show', {
-        fruit: fruits[req.params.indexOfFruitsArray]
+app.post('/fruits', (req, res) => {
+  const { name, color, readyToEat } = req.body;
+  const newFruit = new Fruit({
+    name,
+    color,
+    readyToEat: readyToEat === 'on',
+  });
+
+  newFruit.save()
+    .then(() => {
+      res.redirect('/fruits');
+    })
+    .catch(error => {
+      console.error(error);
+      res.status(500).send('Error creating fruit');
     });
-
 });
 
-
-app.post('/fruits', (req, res)=>{
-    if(req.body.readyToEat === 'on'){ 
-        req.body.readyToEat = true;
-    } else { 
-        req.body.readyToEat = false;
-    }
-    fruits.push(req.body);
-    res.redirect('/fruits'); 
+app.get('/fruits/:id', (req, res) => {
+  const fruitId = req.params.id;
+  Fruit.findById(fruitId)
+    .then(foundFruit => {
+      res.render('fruits/Show', { fruit: foundFruit });
+    })
+    .catch(error => {
+      console.error(error);
+      res.status(404).send('Fruit not found');
+    });
 });
 
-//////VEGETABLE INDEX
+// Vegetable routes
 app.get('/vegetables', (req, res) => {
-    res.render('Vegetable/Index', {
-        vegetables: vegetables
+  Vegetable.find({})
+    .then(allVegetables => {
+      res.render('vegetables/Index', { vegetables: allVegetables });
+    })
+    .catch(error => {
+      console.error(error);
     });
-    
 });
 
-///////NEW
-//Page with form to create a new vegetable
 app.get('/vegetables/new', (req, res) => {
-    res.render('Vegetable/New');
-});
-
-//////SHOW
-app.get('/vegetables/:indexOfVegetablesArray', (req, res) => {
-    res.render('vegetables/Show', {
-        vegetable: vegetables[req.params.indexOfVegetablesArray]
-    });
+  res.render('vegetables/New');
 });
 
 app.post('/vegetables', (req, res) => {
-    if (req.body.readyToEat === 'on') {
-        req.body.readyToEat = true;
-    } else {
-        req.body.readyToEat = false;
-    }
-    vegetables.push(req.body);
-    res.redirect('/vegetables');
+  const { name, color, readyToEat } = req.body;
+  const newVegetable = new Vegetable({
+    name,
+    color,
+    readyToEat: readyToEat === 'on',
+  });
+
+  newVegetable.save()
+    .then(() => {
+      res.redirect('/vegetables');
+    })
+    .catch(error => {
+      console.error(error);
+      res.status(500).send('Error creating vegetable');
+    });
 });
 
-app.use((req, res, next) => {
-    console.log('I run for all routes');
-    next();
+app.get('/vegetables/:id', (req, res) => {
+  const vegetableId = req.params.id;
+  Vegetable.findById(vegetableId)
+    .then(foundVegetable => {
+      res.render('vegetables/Show', { vegetable: foundVegetable });
+    })
+    .catch(error => {
+      console.error(error);
+      res.status(404).send('Vegetable not found');
+    });
 });
 
-app.listen(3000,  () => {
-    console.log("Listening on Port 3000")
-})
+app.listen(3000, () => {
+  console.log('Listening on Port 3000');
+});
